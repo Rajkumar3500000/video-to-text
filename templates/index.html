@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video to Text Converter</title>
+
+    <style>
+        body{
+            font-family: Arial, sans-serif;
+            background:#f5f5f5;
+        }
+
+        .container{
+            width:700px;
+            margin:40px auto;
+            background:white;
+            padding:20px;
+            border-radius:10px;
+            box-shadow:0 0 10px lightgray;
+        }
+
+        h1{
+            text-align:center;
+        }
+
+        input,select{
+            width:100%;
+            padding:10px;
+            margin-top:10px;
+            margin-bottom:15px;
+        }
+
+        button{
+            width:100%;
+            padding:10px;
+            background:#007bff;
+            color:white;
+            border:none;
+            border-radius:5px;
+            cursor:pointer;
+        }
+
+        button:hover{
+            background:#0056b3;
+        }
+
+        textarea{
+            width:100%;
+            height:180px;
+            margin-top:10px;
+            padding:10px;
+        }
+
+        #downloadBtn{
+            display:none;
+            margin-top:10px;
+            background:green;
+        }
+
+        #message{
+            margin-top:15px;
+            color:green;
+            font-weight:bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🎥 Video to Text Converter</h1>
+
+    <input type="file" id="video">
+
+    <select id="language">
+        <option value="auto">Auto Detect</option>
+        <option value="en">English</option>
+        <option value="ta">Tamil</option>
+        <option value="hi">Hindi</option>
+    </select>
+
+    <button onclick="convertVideo()">
+        Convert Video
+    </button>
+
+    <p id="message"></p>
+
+    <h3>Converted Text</h3>
+    <textarea id="text" readonly></textarea>
+
+    <button id="downloadBtn">
+        Download PDF
+    </button>
+
+    <h3>Summary</h3>
+    <textarea id="summary" readonly></textarea>
+
+</div>
+
+<script>
+
+async function convertVideo(){
+
+    const videoFile = document.getElementById("video").files[0];
+
+    if(!videoFile){
+        alert("Select a video file");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("video", videoFile);
+    formData.append(
+        "language",
+        document.getElementById("language").value
+    );
+
+    document.getElementById("message").innerHTML =
+        "Processing... Please wait";
+
+    try{
+
+        const response = await fetch("/converter",{
+            method:"POST",
+            body:formData
+        });
+
+        const data = await response.json();
+
+        document.getElementById("message").innerHTML =
+            data.message;
+
+        document.getElementById("text").value =
+            data.text || "";
+
+        document.getElementById("summary").value =
+            data.summary || "";
+
+        if(data.pdf_filename){
+
+            const btn =
+                document.getElementById("downloadBtn");
+
+            btn.style.display = "block";
+
+            btn.onclick = function(){
+                window.location.href =
+                    "/download-pdf/" +
+                    data.pdf_filename;
+            };
+        }
+
+    }
+    catch(error){
+
+        document.getElementById("message").innerHTML =
+            "Error : " + error;
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
