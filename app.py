@@ -8,10 +8,6 @@ import speech_recognition as sr
 import whisper
 import os
 
-# ─────────────────────────────────────────────
-# App Setup
-# ─────────────────────────────────────────────
-
 app = Flask(__name__)
 
 UPLOAD_FOLDER = "uploads"
@@ -23,11 +19,6 @@ ALLOWED_EXTENSIONS = {"mp4", "mov", "avi", "mkv", "webm", "flv", "wmv"}
 print("Loading Whisper model (base)...")
 whisper_model = whisper.load_model("base")
 print("Whisper ready.")
-
-
-# ─────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -60,7 +51,7 @@ def extract_audio(video_path: str, audio_path: str) -> str | None:
     if not os.path.exists(audio_path) or os.path.getsize(audio_path) < 1000:
         return "Audio extraction produced an empty file."
 
-    return None  # success
+    return None 
 
 
 def transcribe_whisper(audio_path: str, language: str) -> dict:
@@ -131,12 +122,11 @@ def summarize_text(text: str) -> str:
         return sum(freq.get(w, 0) for w in s_words) / (len(s_words) + 1)
 
     scored = sorted(enumerate(sentences), key=lambda x: score(x[1]), reverse=True)
-    # Take top 40% of sentences, preserve order
+    
     top_n = max(3, len(sentences) // 3)
     top_indices = sorted(i for i, _ in scored[:top_n])
     summary = " ".join(sentences[i] for i in top_indices)
     return summary
-
 
 def create_pdf(filename_base: str, original_text: str, summary: str,
                language: str, method: str) -> str:
@@ -175,7 +165,6 @@ def create_pdf(filename_base: str, original_text: str, summary: str,
             y -= LINE_H
         return y
 
-    # ── Header ──
     c.setFillColorRGB(0.08, 0.08, 0.22)
     c.rect(0, HEIGHT - 70, WIDTH, 70, fill=1, stroke=0)
     c.setFillColorRGB(1, 1, 1)
@@ -204,13 +193,11 @@ def create_pdf(filename_base: str, original_text: str, summary: str,
     y = write_wrapped(summary, y, font="Helvetica", size=11)
     y -= 16
 
-    # Divider
     c.setStrokeColorRGB(0.8, 0.8, 0.9)
     c.setLineWidth(1)
     c.line(MARGIN, y, WIDTH - MARGIN, y)
     y -= 20
-
-    # ── Full Transcript ──
+   
     c.setFont("Helvetica-Bold", 13)
     c.setFillColorRGB(0.1, 0.1, 0.6)
     c.drawString(MARGIN, y, "📝  Full Transcript")
@@ -230,11 +217,6 @@ def create_pdf(filename_base: str, original_text: str, summary: str,
     c.save()
     return pdf_filename
 
-
-# ─────────────────────────────────────────────
-# Routes
-# ─────────────────────────────────────────────
-
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -252,7 +234,6 @@ def convert():
         "success": False
     }
 
-    # ── Validate upload ──
     if "video" not in request.files or request.files["video"].filename == "":
         result["message"] = "Please select a video file."
         return jsonify(result), 400
@@ -262,8 +243,8 @@ def convert():
         result["message"] = f"Unsupported format. Use: {', '.join(ALLOWED_EXTENSIONS)}"
         return jsonify(result), 400
 
-    engine = request.form.get("engine", "whisper")         # whisper | google
-    language = request.form.get("language", "auto")        # auto | en | ta | hi
+    engine = request.form.get("engine", "whisper")        
+    language = request.form.get("language", "auto")        
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = secure_filename(file.filename)
@@ -273,13 +254,11 @@ def convert():
     try:
         file.save(video_path)
 
-        # ── Extract audio ──
         err = extract_audio(video_path, audio_path)
         if err:
             result["message"] = err
             return jsonify(result), 422
 
-        # ── Transcribe ──
         if engine == "google":
             try:
                 transcription = transcribe_google_sr(audio_path, language)
@@ -323,7 +302,6 @@ def convert():
             if os.path.exists(p):
                 os.remove(p)
 
-
 @app.route("/download-pdf/<filename>")
 def download_pdf(filename):
     pdf_path = os.path.join(UPLOAD_FOLDER, secure_filename(filename))
@@ -331,6 +309,139 @@ def download_pdf(filename):
         return "PDF not found.", 404
     return send_file(pdf_path, as_attachment=True)
 
-
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
+
+
+
+
+# from moviepy import VideoFileClip
+# import speech_recognition as sr
+# from flask import Flask, request, render_template,send_file
+# from werkzeug.utils import secure_filename
+# import os
+# from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+# from reportlab.pdfgen import canvas
+
+# app = Flask(__name__)
+# tokenizer = AutoTokenizer.from_pretrained("csebuetnlp/mT5_multilingual_XLSum")
+# summary_model = AutoModelForSeq2SeqLM.from_pretrained("csebuetnlp/mT5_multilingual_XLSum")
+
+# def create_pdf(text, summary):
+#     pdf_path = os.path.join("uploads", "result.pdf")
+
+#     c = canvas.Canvas(pdf_path)
+#     c.setFont("Helvetica", 14)
+
+#     c.drawString(50, 800, "Video to Text Result")
+
+#     c.setFont("Helvetica", 12)
+#     c.drawString(50, 760, "Converted Text:")
+
+#     y = 730
+#     for line in text.split("."):
+#         c.drawString(50, y, line.strip())
+#         y -= 20
+
+#     y -= 20
+#     c.drawString(50, y, "Summary:")
+#     y -= 30
+
+#     for line in summary.split("."):
+#         c.drawString(50, y, line.strip())
+#         y -= 20
+
+#     c.save()
+
+#     return pdf_path
+
+# def shorten_text(text):
+#     inputs = tokenizer(
+#         text,
+#         return_tensors="pt",
+#         max_length=512,
+#         truncation=True
+#     )
+
+#     output = summary_model.generate(
+#         **inputs,
+#         max_length=80,
+#         min_length=25,
+#         num_beams=4,
+#         do_sample=False
+#     )
+
+#     summary = tokenizer.decode(output[0], skip_special_tokens=True)
+#     return summary
+
+# @app.route("/")
+# def home():
+#     return render_template("index.html", text="", message="", summary="")
+
+# @app.route("/converter", methods=["GET", "POST"])
+# def video_msg():
+#     text = ""
+#     message = ""
+#     summary = ""
+
+#     if request.method == "POST":
+#         if "video" not in request.files:
+#             message = "No video uploaded"
+#             return render_template("index.html", text=text, message=message, summary=summary)
+
+#         file = request.files["video"]
+
+#         if file.filename == "":
+#             message = "Please select a video file"
+#             return render_template("index.html", text=text, message=message, summary=summary)
+
+#         selected_language = request.form.get("language")
+
+#         os.makedirs("uploads", exist_ok=True)
+
+#         filename = secure_filename(file.filename)
+#         video_path = os.path.join("uploads", filename)
+#         audio_path = os.path.join("uploads", "audio.wav")
+
+#         file.save(video_path)
+
+#         video = VideoFileClip(video_path)
+#         video.audio.write_audiofile(audio_path)
+#         video.close()
+
+#         r = sr.Recognizer()
+
+#         with sr.AudioFile(audio_path) as source:
+#             audio = r.record(source)
+
+#         try:
+#             if selected_language == "en":
+#                 text = r.recognize_google(audio, language="en-IN")
+#             elif selected_language == "hi":
+#                 text = r.recognize_google(audio, language="hi-IN")
+#             elif selected_language == "ta":
+#                 text = r.recognize_google(audio, language="ta-IN")
+#             else:
+#                 message = "Please select a language."
+
+#         except sr.UnknownValueError:
+#             message = "Sorry, speech could not be understood."
+#         except sr.RequestError:
+#             message = "Speech recognition service is not available."
+
+#         summary = shorten_text(text)
+#         pdf_path = create_pdf(text, summary="hi")
+
+#     return render_template(
+#         "index.html",
+#         text=text,
+#         message=message,
+#         summary=summary
+#     )
+
+# @app.route("/download-pdf")
+# def download_pdf():
+#     return send_file("uploads/result.pdf", as_attachment=True)
+
+# if __name__ == "__main__":
+#     app.run(debug=True)
